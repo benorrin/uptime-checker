@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // Struct representing the status of a URL
 #[derive(Debug, Serialize)]

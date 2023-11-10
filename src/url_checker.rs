@@ -4,6 +4,9 @@ use crate::logger;
 use crate::models::{Config, Status};
 
 pub async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    // Log that URL checking is starting
+    log::info!("Checking URLs...");
+
     let mut statuses = Vec::new();
 
     for url in &config.urls_to_check {
@@ -13,6 +16,13 @@ pub async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn std::error
                 let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
                 let status = determine_status(status_code);
+
+                // Print URL status and information to the console
+                println!(
+                    "URL: {}, Status: {}, HTTP Status Code: {}, Last Ping Time: {}",
+                    url, status, status_code, timestamp
+                );
+
                 statuses.push(Status {
                     url: url.clone(),
                     status,
@@ -22,22 +32,31 @@ pub async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn std::error
             }
             Err(err) => {
                 let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-                eprintln!(
+
+                // Log error checking URL
+                log::error!(
                     "Timestamp: {}, URL: {}, Error: {} (Not Accessible)",
                     timestamp, url, err
                 );
+
+                // Print URL error information to the console
+                println!("URL: {}, Error: {} (Not Accessible)", url, err);
             }
         }
     }
 
     match &config.output_format.to_lowercase()[..] {
         "csv" => logger::log_statuses_to_csv(config, &statuses)?,
-        "json" => logger::log_statuses_to_json(&statuses, &config.json_file_path)?,
+        "json" => logger::log_statuses_to_json(config, &statuses)?,
         _ => {
-            eprintln!("Invalid output format specified in config.yaml");
+            // Log invalid output format
+            log::error!("Invalid output format specified in config.yaml");
             return Err("Invalid output format".into());
         }
     }
+
+    // Log that URL checking has completed
+    log::info!("URL checking completed successfully.");
 
     Ok(())
 }

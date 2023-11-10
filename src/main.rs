@@ -7,6 +7,9 @@ mod models;
 mod url_checker;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize logger
+    env_logger::init();
+
     // Load the configuration from the config file
     let config = match config_loader::load_config() {
         Ok(config) => config,
@@ -19,6 +22,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.ping_interval_seconds, config.urls_to_check
     );
 
+    // Log the startup message
+    log::info!(
+        "URL Checker started. Checking every {} seconds for the following URLs: {:?}",
+        config.ping_interval_seconds, config.urls_to_check
+    );
+
     // Create a Duration representing the ping interval
     let _ping_interval = Duration::from_secs(config.ping_interval_seconds);
 
@@ -26,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         // Get the current time
         let current_time = url_checker::get_current_time();
-        
+
         // Calculate the time elapsed since the last run
         let elapsed_time = url_checker::get_elapsed_time(current_time)?;
 
@@ -47,9 +56,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match tokio::runtime::Runtime::new() {
             Ok(runtime) => match runtime.block_on(url_checker::check_url_and_log(&config)) {
                 Ok(_) => (),
-                Err(err) => eprintln!("Error checking URL and logging: {:?}", err),
+                Err(err) => {
+                    // Log error checking URL and logging
+                    log::error!("Error checking URL and logging: {:?}", err);
+                }
             },
-            Err(e) => eprintln!("Error creating Tokio runtime: {:?}", e),
+            Err(e) => {
+                // Log error creating Tokio runtime
+                log::error!("Error creating Tokio runtime: {:?}", e);
+            }
         }
     }
 }
