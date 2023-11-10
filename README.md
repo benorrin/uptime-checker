@@ -1,9 +1,9 @@
-# URL Checker
+# Uptime Checker
 
 [![Rust](https://img.shields.io/badge/Language-Rust-orange)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-URL Checker is a Rust application that periodically checks the accessibility of specified URLs and logs the results to a CSV or JSON file.
+Uptime Checker is a Rust application that periodically checks the accessibility of specified URLs and logs the results to a CSV or JSON file.
 
 ## Features
 
