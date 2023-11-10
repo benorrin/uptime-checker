@@ -1,48 +1,77 @@
 use std::error::Error;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::{self, Read};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use csv::Writer;
 use reqwest;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeSeq};
 
 #[derive(Debug, Deserialize)]
 struct Config {
-    url_to_check: String,
+    urls_to_check: Vec<String>,  // Fix the field name
     csv_file_path: String,
+    json_file_path: String,
     ping_interval_seconds: u64,
+    output_format: String,
 }
 
 async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn Error>> {
-    match reqwest::get(&config.url_to_check).await {
-        Ok(response) => {
-            let status_code = response.status();
-            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    for url in &config.urls_to_check {
+        match reqwest::get(url).await {
+            Ok(response) => {
+                let status_code = response.status();
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)?
+                    .as_secs();
 
-            println!(
-                "Timestamp: {}, URL: {}, Status Code: {} (Accessible)",
-                timestamp, config.url_to_check, status_code
-            );
+                match &config.output_format.to_lowercase()[..] {
+                    "csv" => {
+                        println!(
+                            "Timestamp: {}, URL: {}, Status Code: {} (Accessible)",
+                            timestamp, url, status_code
+                        );
 
-            let mut csv_writer = Writer::from_writer(
-                OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .append(true)
-                    .open(&config.csv_file_path)?,
-            );
+                        let mut csv_writer = Writer::from_writer(
+                            OpenOptions::new()
+                                .create(true)
+                                .write(true)
+                                .append(true)
+                                .open(&config.csv_file_path)?,
+                        );
 
-            csv_writer.write_record(&[timestamp.to_string(), status_code.to_string()])?;
-        }
-        Err(err) => {
-            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+                        csv_writer.write_record(&[timestamp.to_string(), status_code.to_string()])?;
+                    }
+                    "json" => {
+                        println!(
+                            "Timestamp: {}, URL: {}, Status Code: {} (Accessible)",
+                            timestamp, url, status_code
+                        );
 
-            eprintln!(
-                "Timestamp: {}, URL: {}, Error: {} (Not Accessible)",
-                timestamp, config.url_to_check, err
-            );
+                        let mut json_writer =
+                            serde_json::to_writer(
+                                OpenOptions::new()
+                                    .create(true)
+                                    .write(true)
+                                    .append(true)
+                                    .open(&config.json_file_path)?,
+                                &(timestamp, url, status_code.as_u16()),
+                            )?;
+                    }
+                    _ => {
+                        eprintln!("Invalid output format specified in config.yaml");
+                        return Err("Invalid output format".into());
+                    }
+                }
+            }
+            Err(err) => {
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)?
+                    .as_secs();
+                eprintln!("Timestamp: {}, URL: {}, Error: {} (Not Accessible)", timestamp, url, err);
+            }
         }
     }
 
@@ -82,8 +111,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!(
-        "URL Checker started. Checking every {} seconds for {}",
-        config.ping_interval_seconds, config.url_to_check
+        "URL Checker started. Checking every {} seconds for the following URLs: {:?}",
+        config.ping_interval_seconds, config.urls_to_check
     );
 
     let ping_interval = Duration::from_secs(config.ping_interval_seconds);
