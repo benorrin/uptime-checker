@@ -50,6 +50,8 @@ async fn check_url_and_log() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("URL Checker started. Checking every {} seconds.", PING_INTERVAL_SECONDS);
+
     let ping_interval = Duration::from_secs(PING_INTERVAL_SECONDS);
 
     loop {
