@@ -1,17 +1,17 @@
 use std::error::Error;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::{self, Read};
+use std::io::Read;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use csv::Writer;
-use reqwest;
-use serde::{Deserialize, Serialize, ser::SerializeSeq};
+
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct Config {
-    urls_to_check: Vec<String>,  // Fix the field name
+    urls_to_check: Vec<String>, // Fix the field name
     csv_file_path: String,
     json_file_path: String,
     ping_interval_seconds: u64,
@@ -23,9 +23,7 @@ async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn Error>> {
         match reqwest::get(url).await {
             Ok(response) => {
                 let status_code = response.status();
-                let timestamp = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)?
-                    .as_secs();
+                let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
                 match &config.output_format.to_lowercase()[..] {
                     "csv" => {
@@ -42,7 +40,8 @@ async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn Error>> {
                                 .open(&config.csv_file_path)?,
                         );
 
-                        csv_writer.write_record(&[timestamp.to_string(), status_code.to_string()])?;
+                        csv_writer
+                            .write_record(&[timestamp.to_string(), status_code.to_string()])?;
                     }
                     "json" => {
                         println!(
@@ -50,15 +49,14 @@ async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn Error>> {
                             timestamp, url, status_code
                         );
 
-                        let mut json_writer =
-                            serde_json::to_writer(
-                                OpenOptions::new()
-                                    .create(true)
-                                    .write(true)
-                                    .append(true)
-                                    .open(&config.json_file_path)?,
-                                &(timestamp, url, status_code.as_u16()),
-                            )?;
+                        serde_json::to_writer(
+                            OpenOptions::new()
+                                .create(true)
+                                .write(true)
+                                .append(true)
+                                .open(&config.json_file_path)?,
+                            &(timestamp, url, status_code.as_u16()),
+                        )?;
                     }
                     _ => {
                         eprintln!("Invalid output format specified in config.yaml");
@@ -67,10 +65,11 @@ async fn check_url_and_log(config: &Config) -> Result<(), Box<dyn Error>> {
                 }
             }
             Err(err) => {
-                let timestamp = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)?
-                    .as_secs();
-                eprintln!("Timestamp: {}, URL: {}, Error: {} (Not Accessible)", timestamp, url, err);
+                let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+                eprintln!(
+                    "Timestamp: {}, URL: {}, Error: {} (Not Accessible)",
+                    timestamp, url, err
+                );
             }
         }
     }
@@ -115,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.ping_interval_seconds, config.urls_to_check
     );
 
-    let ping_interval = Duration::from_secs(config.ping_interval_seconds);
+    let _ping_interval = Duration::from_secs(config.ping_interval_seconds);
 
     loop {
         let current_time = SystemTime::now();
